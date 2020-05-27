@@ -1,4 +1,5 @@
 import boto3
+from urllib.parse import unquote
 
 
 def get_targets_from_bucket(client, src_bucket):
@@ -31,7 +32,7 @@ def lambda_handler(event, context):
 
     for record in event["Records"]:
         src_bucket = record["s3"]["bucket"]["name"]
-        key = record["s3"]["object"]["key"]
+        key = unquote(record["s3"]["object"]["key"])
         targets = get_targets_from_bucket(client, src_bucket)
         if targets:
             for dest_bucket in targets:
