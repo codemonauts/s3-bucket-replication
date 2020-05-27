@@ -21,14 +21,7 @@ def copy(client, src_bucket, dest_bucket, key):
     """
     Copy one object from the src to the dest bucket
     """
-    response = client.copy_object(
-        Bucket=dest_bucket,
-        Key=key,
-        CopySource={
-            "Bucket": src_bucket,
-            "Key": key
-        }
-    )
+    response = client.copy_object(Bucket=dest_bucket, Key=key, CopySource={"Bucket": src_bucket, "Key": key})
     if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
         print(f"Error while copying {key}: {response}")
 
