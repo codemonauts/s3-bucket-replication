@@ -1,0 +1,11 @@
+version: 2
+updates:
+  
+  # Enable version updates for Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Berlin"
