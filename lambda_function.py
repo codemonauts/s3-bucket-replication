@@ -1,5 +1,9 @@
-import boto3
+"""
+AWS Lambda function to copy objects from one bucket to other bucklets.
+"""
+
 from urllib.parse import unquote
+import boto3
 
 
 def get_targets_from_bucket(client, src_bucket):
@@ -7,6 +11,7 @@ def get_targets_from_bucket(client, src_bucket):
     Find the 'TargetBucket' tag on a bucket and return
     a list of all targets
     """
+
     bucket_tagging = client.get_bucket_tagging(Bucket=src_bucket)
     tags = bucket_tagging["TagSet"]
 
@@ -22,12 +27,17 @@ def copy(client, src_bucket, dest_bucket, key):
     """
     Copy one object from the src to the dest bucket
     """
+
     response = client.copy_object(Bucket=dest_bucket, Key=key, CopySource={"Bucket": src_bucket, "Key": key})
     if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
         print(f"Error while copying {key}: {response}")
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context):  # pylint: disable=unused-argument
+    """
+    Entrypoint for AWS Lambda
+    """
+
     client = boto3.client("s3")
 
     for record in event["Records"]:
