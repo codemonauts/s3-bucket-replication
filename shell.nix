@@ -3,7 +3,7 @@
 pkgs.mkShell {
   buildInputs = with pkgs; [
     black
-    python313Packages.pylint
-    python313Packages.boto3
+    python314Packages.pylint
+    python314Packages.boto3
   ];
 }

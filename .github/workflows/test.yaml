@@ -12,15 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Setup python 3.13
-        uses: actions/setup-python@v5
+      - name: Setup python 3.14
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.14'
 
       - name: Check format
         uses: psf/black@stable
         with:
-          options: " -l 120 --check -t py313"
+          options: " -l 120 --check -t py314"
           src: "."
