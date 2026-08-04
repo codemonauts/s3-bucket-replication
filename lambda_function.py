@@ -2,8 +2,15 @@
 AWS Lambda function to copy objects from one bucket to other bucklets.
 """
 
-from urllib.parse import unquote
+import logging
+from urllib.parse import unquote_plus
+
 import boto3
+from boto3.exceptions import S3TransferFailedError
+from botocore.exceptions import ClientError
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def get_targets_from_bucket(client, src_bucket):
@@ -12,25 +19,35 @@ def get_targets_from_bucket(client, src_bucket):
     a list of all targets
     """
 
-    bucket_tagging = client.get_bucket_tagging(Bucket=src_bucket)
+    try:
+        bucket_tagging = client.get_bucket_tagging(Bucket=src_bucket)
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] == "NoSuchTagSet":
+            return None
+        raise
+
     tags = bucket_tagging["TagSet"]
 
     # Look for the 'TargetBucket' string
     for t in tags:
         if t["Key"] == "TargetBucket":
-            return t["Value"].split(" ")
+            return t["Value"].split()
 
     return None
 
 
 def copy(client, src_bucket, dest_bucket, key):
     """
-    Copy one object from the src to the dest bucket
+    Copy one object from the src to the dest bucket.
+
+    Uses the managed 'copy' transfer, which transparently switches to a
+    multipart copy for objects larger than the 5 GB single-request limit.
     """
 
-    response = client.copy_object(Bucket=dest_bucket, Key=key, CopySource={"Bucket": src_bucket, "Key": key})
-    if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
-        print(f"Error while copying {key}: {response}")
+    try:
+        client.copy(CopySource={"Bucket": src_bucket, "Key": key}, Bucket=dest_bucket, Key=key)
+    except (ClientError, S3TransferFailedError) as exc:
+        logger.error("Error while copying '%s' to '%s': %s", key, dest_bucket, exc)
 
 
 def lambda_handler(event, context):  # pylint: disable=unused-argument
@@ -42,11 +59,11 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
 
     for record in event["Records"]:
         src_bucket = record["s3"]["bucket"]["name"]
-        key = unquote(record["s3"]["object"]["key"])
+        key = unquote_plus(record["s3"]["object"]["key"])
         targets = get_targets_from_bucket(client, src_bucket)
         if targets:
             for dest_bucket in targets:
-                print(f"Will copy '{key}' to '{dest_bucket}'")
+                logger.info("Will copy '%s' to '%s'", key, dest_bucket)
                 copy(client, src_bucket, dest_bucket, key)
         else:
-            print(f"Bucket {src_bucket} has no targets configured")
+            logger.info("Bucket %s has no targets configured", src_bucket)
