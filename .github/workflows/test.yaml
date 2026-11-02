@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'master'
+  pull_request:
 
 jobs:
 
@@ -24,3 +25,8 @@ jobs:
         with:
           options: " -l 120 --check -t py314"
           src: "."
+
+      - name: Lint
+        run: |
+          pip install pylint boto3
+          pylint lambda_function.py

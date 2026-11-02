@@ -22,8 +22,26 @@ versions, we decidet to rewrite the tool in Python3.
   * Add a tag with the name 'TargetBucket' to the bucket you want to use as a source with a whitespace seperated list of target buckets as the value
   * Add a event for "All object create events" on the bucket, which executes the lambda function
 
+## Configuration
+
+The function can be tuned with the following optional environment variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `TAG_CACHE_TTL` | `300` | Seconds the `TargetBucket` tag lookup is cached per source bucket (warm containers only). Tag changes take effect after the TTL expires or on a cold start. |
+| `STORAGE_CLASS` | _(unset)_ | Storage class for the copied objects, e.g. `STANDARD_IA` or `GLACIER_IR`. |
+| `SSE_KMS_KEY_ID` | _(unset)_ | KMS key id/ARN; if set, copies are written with SSE-KMS using this key. |
+
 ## IAM
 
 Lambda functions needs the following additional permissions to work:
   * `s3:GetBucketTagging` and `s3:GetObject` on the source bucket
   * `s3:PutObject` on all target buckets
+  * `s3:AbortMultipartUpload` on all target buckets (objects larger than 5 GB are copied via multipart upload, which needs this permission to clean up failed copies)
+  * If the source objects are SSE-KMS encrypted: `kms:Decrypt` on the source key
+  * If `SSE_KMS_KEY_ID` is set: `kms:GenerateDataKey` and `kms:Decrypt` on that key
+
+## Operational notes
+
+  * A failed copy now fails the whole invocation, so S3's built-in async retries kick in. Configure an [on-failure destination or DLQ](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-retain-records.html) on the function to catch events that still fail after all retries.
+  * The function skips a target that equals the source bucket, but it cannot detect loops across multiple buckets. Don't point two buckets at each other via their `TargetBucket` tags while both trigger this function.
